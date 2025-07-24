@@ -1,53 +1,38 @@
 --[[
   Kaycees Layout V2 - Full FPS & FastFlag GUI for Football Fusion 2
-  Features:
-    • FPS Input (30–120) with repeated safe application
-    • FastFlag JSON editor with validation & apply
-    • Grey Sky toggle ON/OFF
-    • Boost Mode toggle (hides decals/textures)
-    • Theme selector: Default, Dark, Classic, Stealth
-    • Font selector dropdown + manual font input
-    • Live FPS counter
-    • Draggable "K" toggle button to show/hide GUI
-    • Splash screen with YouTube & Discord info
-    • Warning popup with dismiss button
-    • Saves config persistently during executor session
-    • Runs ONLY in Practice Mode (safe for public/private servers)
-    • Mobile compatible UI, smooth fade/slide animations
+  Runs ONLY in Practice Mode.
 ]]
 
--- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 
--- Practice Mode Place IDs (replace with your real IDs)
+-- Replace these with your actual Practice Mode Place IDs
 local PracticePlaceIDs = {
-  123456789, -- example
-  987654321,
+  123456789, -- example ID 1
+  987654321, -- example ID 2
 }
+
 local function isPracticeMode()
   for _, id in ipairs(PracticePlaceIDs) do
-    if game.PlaceId == id then return true end
+    if game.PlaceId == id then
+      return true
+    end
   end
   return false
 end
+
 if not isPracticeMode() then
-  warn("Kaycees Layout V2: Not Practice Mode - script stopped.")
-  return
+  return -- stop script silently outside Practice Mode
 end
 
--- Config storage
+-- Global config table
 local config = getgenv().KayceesConfig or {}
-getgenv().KayceesConfig = config
-
--- Utils
-local function safeSetFFlag(flag, value)
+getgenv().KayceesConfig = configlocal function safeSetFFlag(flag, value)
   if typeof(setfflag) == "function" then
     pcall(function() setfflag(flag, value) end)
   end
@@ -59,7 +44,6 @@ local function clampFPS(fps)
   return fps
 end
 
--- Theme definitions
 local themes = {
   Default = {
     Background = Color3.fromRGB(240, 240, 240),
@@ -88,7 +72,6 @@ local fonts = {
   "Highway", "HighwayBold", "HighwayItalic", "Arcade", "ArcadeBold",
 }
 
--- Variables for state
 local currentFPS = 60
 local applyingFPS = false
 local currentTheme = "Default"
@@ -97,22 +80,14 @@ local greySkyState = false
 local boostModeState = false
 local warningDismissed = false
 
--- UI Creation helper
+local TweenService = game:GetService("TweenService")
+
 local function newUICorner(parent, radius)
   local c = Instance.new("UICorner")
   c.CornerRadius = radius or UDim.new(0, 8)
   c.Parent = parent
   return c
-end
-
-local function tweenTransparency(guiObject, goalTransparency, duration)
-  local tweenService = game:GetService("TweenService")
-  local tweenInfo = TweenInfo.new(duration or 0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-  tweenService:Create(guiObject, tweenInfo, {BackgroundTransparency = goalTransparency, TextTransparency = goalTransparency}):Play()
-end
-
--- Main GUI elements
-local ScreenGui = Instance.new("ScreenGui")
+endlocal ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "KayceesLayoutV2"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = CoreGui
@@ -145,10 +120,7 @@ scrollFrame.Position = UDim2.new(0, 10, 0, 10)
 scrollFrame.BackgroundTransparency = 1
 scrollFrame.ScrollBarThickness = 6
 scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-scrollFrame.Parent = mainFrame
-
--- Content Y tracker
-local y = 0
+scrollFrame.Parent = mainFramelocal y = 0
 local function addLabel(text, color, fontBold, size)
   local label = Instance.new("TextLabel")
   label.Size = UDim2.new(1, 0, 0, size or 24)
@@ -205,26 +177,6 @@ local function addToggle(text, initial, callback)
   return btn
 end
 
-local function addTextBox(placeholder, height)
-  local box = Instance.new("TextBox")
-  box.Size = UDim2.new(1, 0, 0, height or 60)
-  box.Position = UDim2.new(0, 0, 0, y)
-  box.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-  box.TextColor3 = themes.Default.TextColor
-  box.Font = Enum.Font.Code
-  box.TextSize = 14
-  box.TextWrapped = true
-  box.ClearTextOnFocus = false
-  box.MultiLine = true
-  box.PlaceholderText = placeholder or ""
-  box.Text = ""
-  box.Parent = scrollFrame
-  newUICorner(box, UDim.new(0,6))
-  y = y + box.Size.Y.Offset + 14
-  return box
-end
-
--- FPS label and input
 local fpsLabel = addLabel("FPS: 60", themes.Default.TextColor, true, 24)
 local fpsInput = Instance.new("TextBox")
 fpsInput.Size = UDim2.new(1, 0, 0, 30)
@@ -249,6 +201,7 @@ local function applyFPS()
     end
   end)
 end
+
 local function setFPS(val)
   currentFPS = clampFPS(tonumber(val) or 60)
   fpsLabel.Text = "FPS: " .. currentFPS
@@ -256,12 +209,12 @@ local function setFPS(val)
   applyFPS()
   saveConfig()
 end
+
 fpsInput.FocusLost:Connect(function(enter)
   if enter then setFPS(fpsInput.Text) end
 end)
 
--- Grey Sky toggle
-local function toggleGreySky(state)
+setFPS(currentFPS)local function toggleGreySky(state)
   greySkyState = state
   if state then
     Lighting.GlobalShadows = false
@@ -287,9 +240,9 @@ local function toggleGreySky(state)
   end
   saveConfig()
 end
+
 local greySkyToggle = addToggle("Grey Sky", greySkyState, toggleGreySky)
 
--- Boost Mode toggle (hides decals/textures)
 local function toggleBoost(state)
   boostModeState = state
   if state then
@@ -307,10 +260,8 @@ local function toggleBoost(state)
   end
   saveConfig()
 end
-local boostToggle = addToggle("Boost Mode", boostModeState, toggleBoost)
 
--- Theme selector
-local themeLabel = addLabel("Theme Selector", themes.Default.TextColor, true)
+local boostToggle = addToggle("Boost Mode", boostModeState, toggleBoost)ilocal themeLabel = addLabel("Theme Selector", themes.Default.TextColor, true)
 local themeDropdown = Instance.new("TextButton")
 themeDropdown.Size = UDim2.new(1, 0, 0, 30)
 themeDropdown.Position = UDim2.new(0, 0, 0, y)
@@ -390,7 +341,6 @@ local function applyTheme(name)
   boostToggle.TextColor3 = t.TextColor
   fpsInput.TextColor3 = t.TextColor
   fpsInput.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-  -- Update buttons colors
   for _, btn in ipairs(themeButtons) do
     btn.BackgroundColor3 = t.Button
     btn.TextColor3 = t.TextColor
@@ -448,25 +398,6 @@ do
     btn.Size = UDim2.new(1, 0, 0, 30)
     btn.Position = UDim2.new(0, 0, 0, 30 * i)
     btn.BackgroundColor3 = themes.Default.Button
-    btn.TextColor3 = themes.Default.Text  fontDropdownFrame:TweenSize(UDim2.new(1, 0, 0, height), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.25, true)
-end
-
-fontDropdown.MouseButton1Click:Connect(function()
-  if fontDropdownFrame.Visible then
-    closeFontDropdown()
-  else
-    openFontDropdown()
-  end
-end)
-
-local fontButtons = {}
-do
-  local i = 0
-  for _, name in ipairs(fonts) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 30)
-    btn.Position = UDim2.new(0, 0, 0, 30 * i)
-    btn.BackgroundColor3 = themes.Default.Button
     btn.TextColor3 = themes.Default.TextColor
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 16
@@ -502,145 +433,9 @@ local function applyFont(name)
   end
 end
 
-applyFont(fonts[currentFontIndex])
-
--- FastFlag JSON editor
-local ffLabel = addLabel("FastFlag JSON Editor", themes.Default.TextColor, true)
-local ffTextBox = addTextBox("Paste FastFlag JSON here...", 100)
-local ffApplyBtn = addButton("Apply FastFlag JSON", function()
-  local success, data = pcall(function()
-    return HttpService:JSONDecode(ffTextBox.Text)
-  end)
-  if success and type(data) == "table" then
-    for k, v in pairs(data) do
-      safeSetFFlag(k, tostring(v))
-    end
-    warningPopup("FastFlag JSON applied successfully.")
-  else
-    warningPopup("Invalid JSON format. Please check your input.")
-  end
-end)
-
--- Warning popup
-local warningFrame = Instance.new("Frame")
-warningFrame.Size = UDim2.new(0, 300, 0, 100)
-warningFrame.Position = UDim2.new(0.5, -150, 0.5, -50)
-warningFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-warningFrame.Visible = false
-warningFrame.Parent = ScreenGui
-newUICorner(warningFrame)
-
-local warningLabel = Instance.new("TextLabel")
-warningLabel.Size = UDim2.new(1, -20, 1, -50)
-warningLabel.Position = UDim2.new(0, 10, 0, 10)
-warningLabel.BackgroundTransparency = 1
-warningLabel.TextColor3 = Color3.new(1, 1, 1)
-warningLabel.Font = Enum.Font.GothamBold
-warningLabel.TextSize = 16
-warningLabel.TextWrapped = true
-warningLabel.TextYAlignment = Enum.TextYAlignment.Top
-warningLabel.Parent = warningFrame
-
-local warningBtn = Instance.new("TextButton")
-warningBtn.Size = UDim2.new(1, -20, 0, 30)
-warningBtn.Position = UDim2.new(0, 10, 1, -40)
-warningBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-warningBtn.TextColor3 = Color3.new(1, 1, 1)
-warningBtn.Font = Enum.Font.GothamBold
-warningBtn.TextSize = 16
-warningBtn.Text = "Dismiss"
-warningBtn.Parent = warningFrame
-newUICorner(warningBtn)
-
-local function warningPopup(msg)
-  if warningDismissed then return end
-  warningLabel.Text = msg
-  warningFrame.Visible = true
-end
-
-warningBtn.MouseButton1Click:Connect(function()
-  warningFrame.Visible = false
-  warningDismissed = true
-  saveConfig()
-end)
-
--- Save/load config functions
-function saveConfig()
-  config.FPS = currentFPS
-  config.GreySky = greySkyState
-  config.BoostMode = boostModeState
-  config.Theme = currentTheme
-  config.FontIndex = currentFontIndex
-  config.WarningDismissed = warningDismissed
-  config.FastFlagJSON = ffTextBox.Text
-  getgenv().KayceesConfig = config
-end
-
-local function loadConfig()
-  if config.FPS then setFPS(config.FPS) end
-  if config.GreySky ~= nil then toggleGreySky(config.GreySky) greySkyToggle.Text = "Grey Sky: " .. (config.GreySky and "ON" or "OFF") end
-  if config.BoostMode ~= nil then toggleBoost(config.BoostMode) boostToggle.Text = "Boost Mode: " .. (config.BoostMode and "ON" or "OFF") end
-  if config.Theme then
-    currentTheme = config.Theme
-    themeDropdown.Text = currentTheme
-    applyTheme(currentTheme)
-  end
-  if config.FontIndex then
-    currentFontIndex = config.FontIndex
-    fontDropdown.Text = fonts[currentFontIndex] or fonts[1]
-    applyFont(fonts[currentFontIndex])
-  end
-  if config.WarningDismissed ~= nil then warningDismissed = config.WarningDismissed end
-  if config.FastFlagJSON then ffTextBox.Text = config.FastFlagJSON end
-end
-
-loadConfig()
-
--- Toggle main GUI visibility
-toggleButton.MouseButton1Click:Connect(function()
-  mainFrame.Visible = not mainFrame.Visible
-end)
-
--- Live FPS counter (simple)
-local fpsCounterLabel = Instance.new("TextLabel")
-fpsCounterLabel.Size = UDim2.new(0, 60, 0, 20)
-fpsCounterLabel.Position = UDim2.new(1, -70, 0, 10)
-fpsCounterLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-fpsCounterLabel.TextColor3 = Color3.new(1, 1, 1)
-fpsCounterLabel.Font = Enum.Font.GothamBold
-fpsCounterLabel.TextSize = 14
-fpsCounterLabel.Text = "FPS: 60"
-fpsCounterLabel.Parent = ScreenGui
-newUICorner(fpsCounterLabel)
-
-local lastFrameTime = tick()
-local frameCount = 0
-RunService.RenderStepped:Connect(function()
-  frameCount = frameCount + 1
-  if tick() - lastFrameTime >= 1 then
-    fpsCounterLabel.Text = "FPS: " .. frameCount
-    frameCount = 0
-    lastFrameTime = tick()
-  end
-end)
-
--- Splash screen with YouTube & Discord info
-local splashScreen = Instance.new("Frame")
-splashScreen.Size = UDim2.new(1, 0, 1, 0)
-splashScreen.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-splashScreen.Parent = ScreenGui
-
-local splashText = Instance.new("TextLabel")
-splashText.Size = UDim2.new(1, 0, 0, 100)
-splashText.Position = UDim2.new(0, 0, 0.4, 0)
-splashText.BackgroundTransparency = 1
-splashText.TextColor3 = Color3.new(1, 1, 1)
-splashText.Font = Enum.Font.GothamBold
-splashText.TextSize = 32
-splashText.Text = "Thenewkaycee on YouTube\nJoin our Discord!"
-splashText.TextWrapped = true
-splashText.Parent = splashScreen
-
-delay(4, function()
-  splashScreen:Destroy()
-end)
+applyFont(fonts[currentFontIndex])local ffLabel = addLabel("FastFlag JSON Editor", themes.Default.TextColor, true)
+local ffTextBox = Instance.new("TextBox")
+ffTextBox.Size = UDim2.new(1, 0, 0, 100)
+ffTextBox.Position = UDim2.new(0, 0, 0, y)
+ffTextBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ffTextBox.TextColor3 = themes.Default.TextColor
