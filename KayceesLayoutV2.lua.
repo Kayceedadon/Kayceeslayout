@@ -1,0 +1,409 @@
+--[[
+  KayceeLayoutV2 by TheNewkaycee
+  ✅ Mobile + PC compatible
+  ✅ Features: Splash, Tabs, FastFlags, Engine Settings, FPS, Save Config, Old Oof, Drag UI
+]]
+
+print("[KayceeLayoutV2] Starting loader...")
+
+if not writefile then
+	warn("[KayceeLayoutV2] writefile/readfile not supported by your executor.")
+	return
+end
+
+print("[KayceeLayoutV2] writefile supported.")
+
+local uis = game:GetService("UserInputService")
+local rs = game:GetService("RunService")
+local http = game:GetService("HttpService")
+local players = game:GetService("Players")
+local lighting = game:GetService("Lighting")
+local terrain = workspace:FindFirstChildOfClass("Terrain")
+
+local configPath = "KayceeLayoutV2/Config.json"
+local flagPath = "KayceeLayoutV2/Flags.json"
+
+if not isfolder("KayceeLayoutV2") then
+	makefolder("KayceeLayoutV2")
+end
+
+local function readJSON(path)
+	local ok, res = pcall(function() return http:JSONDecode(readfile(path)) end)
+	return ok and res or {}
+end
+
+local function saveJSON(path, tbl)
+	pcall(function() writefile(path, http:JSONEncode(tbl)) end)
+end
+
+local config = readJSON(configPath)
+local savedFlags = readJSON(flagPath)
+
+-- FPS Label
+local fpsLabel = Instance.new("TextLabel")
+fpsLabel.Size = UDim2.new(0, 160, 0, 24)
+fpsLabel.Position = UDim2.new(0, 10, 0, 10)
+fpsLabel.BackgroundTransparency = 1
+fpsLabel.TextColor3 = Color3.fromRGB(0, 170, 255)
+fpsLabel.Font = Enum.Font.Gotham
+fpsLabel.TextSize = 14
+fpsLabel.TextXAlignment = Enum.TextXAlignment.Left
+fpsLabel.Text = "FPS: -- | ms: -- | MB: --"
+fpsLabel.Visible = true
+fpsLabel.ZIndex = 999
+fpsLabel.Parent = game.CoreGui
+
+task.spawn(function()
+	local lastTime = tick()
+	local frames = 0
+	while true do
+		frames += 1
+		local now = tick()
+		if now - lastTime >= 1 then
+			local fps = frames
+			local ms = math.floor(1000 / math.max(fps, 1))
+			local mem = math.floor(gcinfo() / 1024)
+			fpsLabel.Text = ("FPS: %d | ms: %d | MB: %d"):format(fps, ms, mem)
+			frames = 0
+			lastTime = now
+		end
+		task.wait()
+	end
+end)
+
+-- GUI Setup
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "KayceeLayoutV2"
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.ResetOnSpawn = false
+
+-- Splash Screen
+local splash = Instance.new("Frame", gui)
+splash.Size = UDim2.new(1, 0, 1, 0)
+splash.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+splash.ZIndex = 1000
+
+local splashText = Instance.new("TextLabel", splash)
+splashText.Size = UDim2.new(1, 0, 1, 0)
+splashText.Text = "⚠️ WARNING\nThis layout is meant for practice/testing environments only.\nModifying game performance in public/private servers may lead to consequences.\n\nThenewkaycee on YouTube\nJoin our Discord: https://discord.gg/CbQHm7VM"
+splashText.TextColor3 = Color3.fromRGB(0, 170, 255)
+splashText.Font = Enum.Font.Gotham
+splashText.TextSize = 20
+splashText.TextWrapped = true
+splashText.TextYAlignment = Enum.TextYAlignment.Center
+splashText.BackgroundTransparency = 1
+
+task.delay(3, function()
+	for i = 1, 20 do
+		splash.BackgroundTransparency = i / 20
+		splashText.TextTransparency = i / 20
+		task.wait(0.05)
+	end
+	splash:Destroy()
+end)
+
+-- Draggable Toggle Button "K"
+local toggleButton = Instance.new("TextButton", gui)
+toggleButton.Size = UDim2.new(0, 40, 0, 40)
+toggleButton.Position = UDim2.new(0.5, -20, 0.5, -20)
+toggleButton.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+toggleButton.Text = "K"
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.TextColor3 = Color3.fromRGB(0, 170, 255)
+toggleButton.TextSize = 24
+toggleButton.Draggable = true
+toggleButton.Active = true
+
+-- Main Menu Frame
+local menu = Instance.new("Frame", gui)
+menu.Size = UDim2.new(0, 600, 0, 400)
+menu.Position = UDim2.new(0.5, -300, 0.5, -200)
+menu.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+menu.BorderColor3 = Color3.fromRGB(0, 170, 255)
+menu.Visible = false
+menu.Active = true
+menu.Draggable = true
+
+local title = Instance.new("TextLabel", menu)
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+title.Text = "KayceeLayoutV2"
+title.Font = Enum.Font.GothamBlack
+title.TextSize = 22
+title.TextColor3 = Color3.fromRGB(0, 170, 255)
+
+local sidebar = Instance.new("Frame", menu)
+sidebar.Size = UDim2.new(0, 140, 1, -40)
+sidebar.Position = UDim2.new(0, 0, 0, 40)
+sidebar.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+
+local tabs = {"Introduction", "Mods", "Engine Settings", "Help", "Save Config"}
+local tabFrames = {}
+local contentParent = Instance.new("Frame", menu)
+contentParent.Size = UDim2.new(1, -140, 1, -40)
+contentParent.Position = UDim2.new(0, 140, 0, 40)
+contentParent.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+
+for i, tabName in ipairs(tabs) do
+	local btn = Instance.new("TextButton", sidebar)
+	btn.Size = UDim2.new(1, 0, 0, 30)
+	btn.Position = UDim2.new(0, 0, 0, (i - 1) * 30)
+	btn.Text = tabName
+	btn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	btn.TextColor3 = Color3.fromRGB(0, 170, 255)
+	btn.Font = Enum.Font.Gotham
+	btn.TextSize = 14
+
+	local tabContent = Instance.new("Frame", contentParent)
+	tabContent.Size = UDim2.new(1, 0, 1, 0)
+	tabContent.BackgroundTransparency = 1
+	tabContent.Visible = false
+	tabFrames[tabName] = tabContent
+
+	btn.MouseButton1Click:Connect(function()
+		for _, f in pairs(tabFrames) do f.Visible = false end
+		tabContent.Visible = true
+	end)
+end
+
+tabFrames["Introduction"].Visible = true
+
+-- Introduction Tab
+do
+	local intro = tabFrames["Introduction"]
+	local yt = Instance.new("TextLabel", intro)
+	yt.Size = UDim2.new(1, -20, 0, 60)
+	yt.Position = UDim2.new(0, 10, 0, 10)
+	yt.Text = "📢 Subscribe to my YouTube TheNewkaycee\nJoin our Discord: https://discord.gg/CbQHm7VM"
+	yt.TextWrapped = true
+	yt.TextColor3 = Color3.fromRGB(0, 170, 255)
+	yt.BackgroundTransparency = 1
+	yt.Font = Enum.Font.Gotham
+	yt.TextSize = 16
+end
+
+-- Mods Tab
+do
+	local mods = tabFrames["Mods"]
+
+	local flagBox = Instance.new("TextBox", mods)
+	flagBox.Size = UDim2.new(1, -20, 0, 120)
+	flagBox.Position = UDim2.new(0, 10, 0, 10)
+	flagBox.PlaceholderText = "Paste your FastFlags JSON here..."
+	flagBox.Text = http:JSONEncode(savedFlags)
+	flagBox.ClearTextOnFocus = false
+	flagBox.TextWrapped = true
+	flagBox.MultiLine = true
+	flagBox.TextYAlignment = Enum.TextYAlignment.Top
+	flagBox.Font = Enum.Font.Code
+	flagBox.TextColor3 = Color3.fromRGB(0, 170, 255)
+	flagBox.TextSize = 14
+	flagBox.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+	flagBox.BorderColor3 = Color3.fromRGB(0, 170, 255)
+	flagBox.BorderSizePixel = 1
+
+	local apply = Instance.new("TextButton", mods)
+	apply.Size = UDim2.new(0, 100, 0, 30)
+	apply.Position = UDim2.new(0, 10, 0, 140)
+	apply.Text = "Apply"
+	apply.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+	apply.BorderColor3 = Color3.fromRGB(0, 170, 255)
+	apply.BorderSizePixel = 1
+	apply.TextColor3 = Color3.fromRGB(0, 170, 255)
+	apply.Font = Enum.Font.GothamBold
+	apply.TextSize = 14
+
+	apply.MouseButton1Click:Connect(function()
+		local text = flagBox.Text
+		local success, parsed = pcall(function()
+			return http:JSONDecode(text)
+		end)
+
+		if success and typeof(parsed) == "table" then
+			for k, v in pairs(parsed) do
+				setfflag(k, v)
+			end
+			saveJSON(flagPath, parsed)
+			print("[KayceeLayoutV2] Flags applied.")
+		else
+			warn("[KayceeLayoutV2] Invalid JSON")
+		end
+	end)
+end
+
+-- Engine Settings Tab
+do
+	local engine = tabFrames["Engine Settings"]
+	local padding = 10
+	local h = 24
+	local y = padding
+
+	local function saveConfigValue(key, value)
+		config[key] = value
+		saveJSON(configPath, config)
+	end
+
+	local function createLabel(parent, text, posY)
+		local lbl = Instance.new("TextLabel", parent)
+		lbl.Size = UDim2.new(0, 200, 0, h)
+		lbl.Position = UDim2.new(0, padding, 0, posY)
+		lbl.BackgroundTransparency = 1
+		lbl.TextColor3 = Color3.fromRGB(0, 170, 255)
+		lbl.Font = Enum.Font.Gotham
+		lbl.TextSize = 14
+		lbl.Text = text
+		lbl.TextXAlignment = Enum.TextXAlignment.Left
+	end
+
+	local function newToggle(key, labelText, posY)
+		createLabel(engine, labelText, posY)
+		local btn = Instance.new("TextButton", engine)
+		btn.Size = UDim2.new(0, 80, 0, h)
+		btn.Position = UDim2.new(0, 220, 0, posY)
+		btn.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+		btn.BorderColor3 = Color3.fromRGB(0, 170, 255)
+		btn.TextColor3 = Color3.fromRGB(0, 170, 255)
+		btn.Font = Enum.Font.GothamBold
+		btn.TextSize = 14
+
+		local state = config[key] == true
+		btn.Text = state and "On" or "Off"
+
+		btn.MouseButton1Click:Connect(function()
+			state = not state
+			btn.Text = state and "On" or "Off"
+			saveConfigValue(key, state)
+
+			if key == "oldOof" then
+				if state then
+					players.LocalPlayer.CharacterAdded:Connect(function(c)
+						c:WaitForChild("Humanoid").Died:Connect(function()
+							local s = Instance.new("Sound", workspace)
+							s.SoundId = "rbxassetid://131070686"
+							s:Play()
+							game.Debris:AddItem(s, 3)
+						end)
+					end)
+				end
+			elseif key == "displayFPS" then
+				fpsLabel.Visible = state
+			elseif key == "disableShadows" then
+				lighting.GlobalShadows = not state
+			elseif key == "disablePost" then
+				for _, i in ipairs(lighting:GetDescendants()) do
+					if i:IsA("PostEffect") then
+						i.Enabled = not state
+					end
+				end
+			elseif key == "disableTerrainTex" and terrain then
+				if state then
+					terrain.MaterialColors = nil -- Disable textures, simplified approach
+				else
+					terrain.MaterialColors = {} -- Enable default textures (this may vary)
+				end
+			end
+		end)
+
+		-- Initial apply
+		if state then
+			btn.MouseButton1Click:Fire()
+		end
+
+		return h + padding
+	end
+
+	local function newTextbox(key, labelText, posY, placeholder)
+		createLabel(engine, labelText, posY)
+		local tb = Instance.new("TextBox", engine)
+		tb.Size = UDim2.new(0, 80, 0, h)
+		tb.Position = UDim2.new(0, 220, 0, posY)
+		tb.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+		tb.BorderColor3 = Color3.fromRGB(0, 170, 255)
+		tb.TextColor3 = Color3.fromRGB(0, 170, 255)
+		tb.Font = Enum.Font.GothamBold
+		tb.TextSize = 14
+		tb.PlaceholderText = placeholder or ""
+		tb.Text = tostring(config[key] or "")
+
+		tb.FocusLost:Connect(function()
+			local num = tonumber(tb.Text)
+			if num then
+				saveConfigValue(key, num)
+				if key == "fpsLimit" then
+					if num > 0 then
+						if setfpscap then setfpscap(num) end
+					else
+						if setfpscap then setfpscap(999) end
+					end
+				end
+			else
+				tb.Text = tostring(config[key] or "")
+			end
+		end)
+
+		-- Initial apply
+		if config[key] then
+			tb.FocusLost()
+		end
+
+		return h + padding
+	end
+
+	local function newDropdown(key, labelText, posY, options)
+		createLabel(engine, labelText, posY)
+		local buttons = {}
+		for i, opt in ipairs(options) do
+			local btn = Instance.new("TextButton", engine)
+			btn.Size = UDim2.new(0, 80, 0, h)
+			btn.Position = UDim2.new(0, 220 + (i - 1) * 85, 0, posY)
+			btn.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+			btn.BorderColor3 = Color3.fromRGB(0, 170, 255)
+			btn.TextColor3 = Color3.fromRGB(0, 170, 255)
+			btn.Font = Enum.Font.GothamBold
+			btn.TextSize = 14
+			btn.Text = opt
+
+			btn.MouseButton1Click:Connect(function()
+				saveConfigValue(key, opt)
+				for _, b in ipairs(buttons) do
+					b.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+					b.TextColor3 = Color3.fromRGB(0, 170, 255)
+				end
+				btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+				btn.TextColor3 = Color3.fromRGB(0, 0, 0)
+
+				if key == "lightingTech" then
+					lighting.Technology = opt
+				elseif key == "textureQuality" then
+					-- You can add your texture quality logic here
+				elseif key == "aaQuality" then
+					-- You can add your anti-aliasing logic here
+				end
+			end)
+
+			if config[key] == opt then
+				btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+				btn.TextColor3 = Color3.fromRGB(0, 0, 0)
+			end
+
+			table.insert(buttons, btn)
+		end
+
+		return h + padding
+	end
+
+	local yOffset = 0
+	yOffset += newToggle("oldOof", "Use old death sound", yOffset)
+	yOffset += newDropdown("aaQuality", "Anti-aliasing quality (MSAA)", yOffset, {"Off", "Low", "Medium", "High"})
+	yOffset += newToggle("disableShadows", "Disable player shadows", yOffset)
+	yOffset += newToggle("disablePost", "Disable post-processing effects", yOffset)
+	yOffset += newToggle("disableTerrainTex", "Disable terrain textures", yOffset)
+	yOffset += newTextbox("fpsLimit", "Framerate limit", yOffset, "0 = unlock")
+	yOffset += newToggle("displayFPS", "Display FPS", yOffset)
+	yOffset += newDropdown("lightingTech", "Preferred lighting technology", yOffset, {"Compatibility", "ShadowMap", "Voxel", "Future"})
+	yOffset += newDropdown("textureQuality", "Texture quality", yOffset, {"Low", "Medium", "High"})
+end
+
+toggleButton.MouseButton1Click:Connect(function()
+	menu.Visible = not menu.Visible
+end)
